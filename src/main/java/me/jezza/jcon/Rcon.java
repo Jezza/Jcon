@@ -24,21 +24,50 @@ public final class Rcon {
 	private final int requestId;
 	private final Socket socket;
 
+	/**
+	 * Private because I don't like throwing exceptions in a constructor, so please use the {@link #open(String, int, String)} method to create an Rcon instance.
+	 *
+	 * @param requestId - The internally unique request id.
+	 * @param socket    - The socked the communication will be traveling through.
+	 */
 	private Rcon(int requestId, Socket socket) {
 		this.requestId = requestId;
 		this.socket = socket;
 	}
 
+	/**
+	 * Sends a command to the Rcon server.
+	 *
+	 * @param payload - The payload that will be sent.
+	 * @return - The response as a string.
+	 * @throws IOException
+	 */
 	public String command(String payload) throws IOException {
-		if (!useable(payload))
+		if (payload == null || payload.isEmpty())
 			throw new IllegalArgumentException("Invalid payload: " + payload);
 		return new String(send(SERVERDATA_EXECCOMMAND, payload.getBytes()).data);
 	}
 
+	/**
+	 * If you wanted to send more custom messages that the standard doesn't provide.
+	 *
+	 * @param type    - The type of the request.
+	 * @param payload - The payload that will be sent.
+	 * @return - The response object, which contains the response data.
+	 * @throws IOException
+	 */
 	public synchronized Response send(int type, byte[] payload) throws IOException {
 		return write(type, payload).read();
 	}
 
+	/**
+	 * Internal write method. Used to dump all the payload and other necessary information into the {@link OutputStream} that the socket gives us.
+	 *
+	 * @param type    - The type of request.
+	 * @param payload - The data we're sending.
+	 * @return - This object, purely for chaining.
+	 * @throws IOException
+	 */
 	private Rcon write(int type, byte[] payload) throws IOException {
 		int body = payload.length + 10;
 		ByteBuffer buffer = ByteBuffer.allocate(body + 4).order(ByteOrder.LITTLE_ENDIAN);
@@ -54,6 +83,12 @@ public final class Rcon {
 		return this;
 	}
 
+	/**
+	 * Reads a {@link Response} from the socket's {@link java.io.InputStream}.
+	 *
+	 * @return - A simple POJO that contains the Response data, among other things.
+	 * @throws IOException
+	 */
 	private Response read() throws IOException {
 		byte[] _buffer = new byte[DEFAULT_BUFFER_SIZE];
 		int read = socket.getInputStream().read(_buffer);
@@ -98,7 +133,7 @@ public final class Rcon {
 	 * @throws IOException - If it fails to connect, or fails to verify, exceptions will be thrown... Everywhere...
 	 */
 	public static Rcon open(String host, int port, String password) throws IOException {
-		if (!useable(host))
+		if (host == null || host.isEmpty())
 			throw new IllegalArgumentException("Invalid host: " + host);
 		if (port < 0 || port > 65535)
 			throw new IllegalArgumentException("Invalid port: " + host);
@@ -109,15 +144,9 @@ public final class Rcon {
 		return rcon;
 	}
 
-	private static boolean useable(CharSequence charSequence) {
-		if (charSequence == null || charSequence.length() == 0)
-			return false;
-		for (int i = 0; i < charSequence.length(); i++)
-			if (charSequence.charAt(i) > ' ')
-				return true;
-		return false;
-	}
-
+	/**
+	 * A simple POJO that will probably be scratched when this project gets moved over to Kotlin.
+	 */
 	public static class Response {
 		public final int id;
 		public final int type;
